@@ -10,11 +10,13 @@ import android.os.Bundle;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
+import android.support.v7.widget.helper.ItemTouchHelper;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.TextView;
 
 import java.util.ArrayList;
+import java.util.Collections;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -23,15 +25,43 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         RecyclerView rv = (RecyclerView) findViewById(R.id.rv);
-        RvAdapter adapter = new RvAdapter();
+        final RvAdapter adapter = new RvAdapter();
         rv.setAdapter(adapter);
         LinearLayoutManager manager = new LinearLayoutManager(this);
         manager.setOrientation(LinearLayoutManager.VERTICAL);
         rv.setLayoutManager(manager);
         rv.addItemDecoration(new TestDividerItemDecoration());
+
+
+        ItemTouchHelper.Callback callback = new RecycleItemTouchHelper(this,adapter);
+        ItemTouchHelper itemTouchHelper = new ItemTouchHelper(callback);
+
+        //功能同上, 但上面的实现更优化
+        ItemTouchHelper itemTouchHelper1 = new ItemTouchHelper(new ItemTouchHelper.Callback() {
+
+            @Override
+            public int getMovementFlags(RecyclerView recyclerView, RecyclerView.ViewHolder viewHolder) {
+
+                return 0;
+            }
+
+            @Override
+            public boolean onMove(RecyclerView recyclerView, RecyclerView.ViewHolder viewHolder, RecyclerView.ViewHolder target) {
+                adapter.onMove(viewHolder.getAdapterPosition(), target.getAdapterPosition());
+                return false;
+            }
+
+            @Override
+            public void onSwiped(RecyclerView.ViewHolder viewHolder, int direction) {
+                adapter.onItemDelete(viewHolder.getAdapterPosition()); //执行滑动时预期的动作
+            }
+        });
+        itemTouchHelper.attachToRecyclerView(rv);
+
+
     }
 
-    private class RvAdapter extends RecyclerView.Adapter {
+    private class RvAdapter extends RecyclerView.Adapter implements RecycleItemTouchHelper.ItemTouchHelperCallback {
         ArrayList<String> mData = new ArrayList<>();
 
 
@@ -56,7 +86,7 @@ public class MainActivity extends AppCompatActivity {
                 View view = holder1.getView();
                 if (position % 2 == 0 && position % 4 != 0) {
                     view.setTag(true);
-                }else{
+                } else {
                     view.setTag(false);
                 }
             }
@@ -65,6 +95,18 @@ public class MainActivity extends AppCompatActivity {
         @Override
         public int getItemCount() {
             return 100;
+        }
+
+        @Override
+        public void onItemDelete(int positon) {
+            mData.remove(positon);
+            notifyDataSetChanged();
+        }
+
+        @Override
+        public void onMove(int fromPosition, int toPosition) {
+            Collections.swap(mData, fromPosition, toPosition);//拖动交换数据,更改item的位置
+            notifyItemMoved(fromPosition, toPosition);
         }
     }
 
